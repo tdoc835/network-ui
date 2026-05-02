@@ -30,11 +30,17 @@ router = APIRouter()
 
 
 def _pick_shell(container_name: str) -> list[str]:
-    """Routers (rN) drop straight into vtysh; everything else gets sh."""
+    """Routers (rN) drop straight into vtysh; everything else gets sh.
+
+    For routers we chain `vtysh; exec bash` so that exiting vtysh drops the
+    user into a bash shell on the FRR container instead of tearing down the
+    whole WebSocket — handy for inspecting the underlying Linux while
+    iterating on FRR config.
+    """
     # naming: clab-<labname>-<nodename>
     node = container_name.rsplit("-", 1)[-1]
     if len(node) >= 2 and node[0] == "r" and node[1:].isdigit():
-        return ["docker", "exec", "-it", container_name, "vtysh"]
+        return ["docker", "exec", "-it", container_name, "bash", "-c", "vtysh; exec bash"]
     return ["docker", "exec", "-it", container_name, "sh"]
 
 
