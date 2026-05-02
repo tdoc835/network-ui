@@ -54,7 +54,8 @@ const nextId = () => `n${_idCounter++}`;
 
 // Walk edges in array order and assign ethN per node — same numbering the
 // backend's lab.yml generator uses, so the labels on the canvas match the
-// real interface names inside each container.
+// real interface names inside each container. The labels themselves are
+// rendered by the InterfaceEdge component from data.sourceIf / data.targetIf.
 function assignInterfaces(edges: FlowEdge[]): FlowEdge[] {
   const ethCount: Record<string, number> = {};
   const nextEth = (nodeId: string) => {
@@ -64,13 +65,8 @@ function assignInterfaces(edges: FlowEdge[]): FlowEdge[] {
   return edges.map((e) => {
     const sourceIf = nextEth(e.source);
     const targetIf = nextEth(e.target);
-    const subnet = e.data?.subnet ?? '';
-    const label = subnet
-      ? `${sourceIf} ─ ${subnet} ─ ${targetIf}`
-      : `${sourceIf} ─ ${targetIf}`;
     return {
       ...e,
-      label,
       data: { ...(e.data ?? { subnet: '' }), sourceIf, targetIf },
     };
   });
@@ -111,8 +107,6 @@ export const useStore = create<State>((set, get) => ({
           ...conn,
           id: `e${Date.now()}`,
           data: { subnet },
-          labelStyle: { fill: '#475569', fontSize: 11, fontWeight: 500 },
-          labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
         } as FlowEdge,
         s.edges,
       )),
@@ -182,8 +176,6 @@ export const useStore = create<State>((set, get) => ({
         source: l.source,
         target: l.target,
         data: { subnet: l.subnet, sourceIp: l.sourceIp, targetIp: l.targetIp },
-        labelStyle: { fill: '#475569', fontSize: 11, fontWeight: 500 },
-        labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
       })),
     );
     // Make sure new nodes don't collide with loaded ones.

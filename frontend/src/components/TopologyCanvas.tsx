@@ -11,9 +11,14 @@ import ReactFlow, {
 import { useStore } from '../store';
 import { HAS_TERMINAL, type DeviceType } from '../types';
 import DeviceNode from './DeviceNode';
+import InterfaceEdge from './InterfaceEdge';
 import { PromptModal } from './Modals';
 
 const nodeTypes = { device: DeviceNode };
+// Override the default edge type so every existing edge (including ones
+// loaded from saved JSON without a type field) renders the per-end
+// interface labels.
+const edgeTypes = { default: InterfaceEdge };
 
 function InfoToast() {
   const msg = useStore((s) => s.infoMessage);
@@ -59,6 +64,7 @@ export default function TopologyCanvas() {
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         // Loose: any handle can connect to any handle, so the edge follows
         // wherever the user actually drops it instead of snapping to the
