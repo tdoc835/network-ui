@@ -17,32 +17,22 @@ async function jpost<T>(url: string, body: unknown): Promise<T> {
   return r.json();
 }
 
+// {nodeName: {expectedEth: actualName}}
+export type InterfaceMap = Record<string, Record<string, string>>;
+
 export interface DeployResult {
   ok: boolean;
   output: string;
   topology: Topology;
-  configsApplied: Array<{ node: string; ok: boolean; log: string }>;
-}
-
-export interface SaveLabResult {
-  ok: boolean;
-  path: string;
-  configsCaptured: string[];
+  interfaceMap: InterfaceMap;
 }
 
 export const api = {
   listLabs: () => jget<string[]>('/api/labs'),
-  loadLab: (name: string) =>
-    jget<Topology & { hasSavedConfigs?: boolean }>(`/api/labs/${name}`),
-  // captureFromLabName lets "Save As" pull configs from the currently-running
-  // lab even though the new name differs.
-  saveLab: (name: string, topology: Topology, captureFromLabName?: string) =>
-    jpost<SaveLabResult>(`/api/labs/${name}`, {
-      topology,
-      captureFromLabName: captureFromLabName ?? topology.name,
-    }),
-  deploy: (topology: Topology, restoreConfig = false) =>
-    jpost<DeployResult>('/api/deploy', { topology, restoreConfig }),
+  loadLab: (name: string) => jget<Topology>(`/api/labs/${name}`),
+  saveLab: (name: string, topology: Topology) =>
+    jpost<{ ok: boolean; path: string }>(`/api/labs/${name}`, topology),
+  deploy: (topology: Topology) => jpost<DeployResult>('/api/deploy', topology),
   destroy: () => jpost<{ ok: boolean; output: string }>('/api/destroy', {}),
   containers: () => jget<ContainerInfo[]>('/api/containers'),
 };

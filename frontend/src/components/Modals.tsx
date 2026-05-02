@@ -23,12 +23,9 @@ export function LoadLabModal({
   onClose,
 }: {
   labs: string[];
-  onPick: (name: string, restoreConfig: boolean) => void;
+  onPick: (name: string) => void;
   onClose: () => void;
 }) {
-  // Default ON — if the user saved configs they almost certainly want them
-  // back on the next deploy.
-  const [restore, setRestore] = useState(true);
   return (
     <Modal onClose={onClose}>
       <h3>Load lab</h3>
@@ -37,30 +34,12 @@ export function LoadLabModal({
       ) : (
         <div className="lab-list">
           {labs.map((name) => (
-            <div key={name} className="item" onClick={() => onPick(name, restore)}>
+            <div key={name} className="item" onClick={() => onPick(name)}>
               {name}
             </div>
           ))}
         </div>
       )}
-      <label
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 13,
-          color: '#475569',
-          marginBottom: 12,
-          cursor: 'pointer',
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={restore}
-          onChange={(e) => setRestore(e.target.checked)}
-        />
-        Restore saved config on next deploy
-      </label>
       <div className="actions">
         <button className="btn" onClick={onClose}>Cancel</button>
       </div>

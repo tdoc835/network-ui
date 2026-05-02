@@ -13,6 +13,7 @@ import {
   type NodeChange,
 } from 'reactflow';
 
+import type { InterfaceMap } from './api';
 import type { DeviceNodeData, DeviceType, LinkMeta, NodeStatus, Topology } from './types';
 
 export type FlowNode = Node<DeviceNodeData>;
@@ -26,9 +27,8 @@ interface State {
   openTerminals: string[]; // node ids
   focusedTerminal: string | null;
   infoMessage: string | null;
-  // When the user loads a lab with "Restore saved config?" ticked, we
-  // remember it so the next Deploy applies the saved configs.
-  restoreOnDeploy: boolean;
+  // The node whose interface info panel is currently open, or null.
+  inspectedNodeId: string | null;
 
   setLabName: (n: string) => void;
   onNodesChange: (c: NodeChange[]) => void;
@@ -43,10 +43,16 @@ interface State {
   closeTerminal: (nodeId: string) => void;
   closeAllTerminals: () => void;
   focusTerminal: (nodeId: string) => void;
-  loadTopology: (t: Topology, opts?: { restoreOnDeploy?: boolean }) => void;
+  loadTopology: (t: Topology) => void;
   toTopology: () => Topology;
   showInfo: (msg: string, ms?: number) => void;
-  setRestoreOnDeploy: (v: boolean) => void;
+  inspectNode: (nodeId: string | null) => void;
+  // After deploy, write actual interface names onto each edge so the
+  // canvas can show the real ethN (or 'et', etc.) the kernel uses.
+  applyInterfaceMap: (map: InterfaceMap) => void;
+  // After destroy, drop the actual interface names so the canvas stops
+  // showing stale info.
+  clearActualInterfaces: () => void;
 }
 
 let _idCounter = 1;
@@ -80,7 +86,7 @@ export const useStore = create<State>((set, get) => ({
   openTerminals: [],
   focusedTerminal: null,
   infoMessage: null,
-  restoreOnDeploy: false,
+  inspectedNodeId: null,
 
   setLabName: (n) => set({ labName: n }),
 
@@ -159,7 +165,7 @@ export const useStore = create<State>((set, get) => ({
 
   focusTerminal: (id) => set({ focusedTerminal: id }),
 
-  loadTopology: (t, opts) => {
+  loadTopology: (t) => {
     // Rehydrate the React Flow graph from a saved Topology.
     const nodes: FlowNode[] = t.nodes.map((n) => ({
       id: n.id,
@@ -191,7 +197,7 @@ export const useStore = create<State>((set, get) => ({
       containerStatus: {},
       openTerminals: [],
       focusedTerminal: null,
-      restoreOnDeploy: opts?.restoreOnDeploy ?? false,
+      inspectedNodeId: null,
     });
   },
 
@@ -216,7 +222,33 @@ export const useStore = create<State>((set, get) => ({
     };
   },
 
-  setRestoreOnDeploy: (v) => set({ restoreOnDeploy: v }),
+  inspectNode: (nodeId) => set({ inspectedNodeId: nodeId }),
+
+  applyInterfaceMap: (map) =>
+    set((s) => ({
+      edges: s.edges.map((e) => {
+        const sourceName = s.nodes.find((n) => n.id === e.source)?.data.name;
+        const targetName = s.nodes.find((n) => n.id === e.target)?.data.name;
+        const expectedSrc = e.data?.sourceIf;
+        const expectedTgt = e.data?.targetIf;
+        const actualSourceIf =
+          sourceName && expectedSrc ? map[sourceName]?.[expectedSrc] : undefined;
+        const actualTargetIf =
+          targetName && expectedTgt ? map[targetName]?.[expectedTgt] : undefined;
+        return {
+          ...e,
+          data: { ...(e.data ?? { subnet: '' }), actualSourceIf, actualTargetIf },
+        };
+      }),
+    })),
+
+  clearActualInterfaces: () =>
+    set((s) => ({
+      edges: s.edges.map((e) => ({
+        ...e,
+        data: { ...(e.data ?? { subnet: '' }), actualSourceIf: undefined, actualTargetIf: undefined },
+      })),
+    })),
 
   // Tiny toast: surfaces a message in the UI for `ms` ms then clears it.
   showInfo: (msg, ms = 3000) => {

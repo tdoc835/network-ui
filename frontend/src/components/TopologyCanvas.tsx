@@ -12,6 +12,7 @@ import { useStore } from '../store';
 import { HAS_TERMINAL, type DeviceType } from '../types';
 import DeviceNode from './DeviceNode';
 import InterfaceEdge from './InterfaceEdge';
+import NodeInfoPanel from './NodeInfoPanel';
 import { PromptModal } from './Modals';
 
 const nodeTypes = { device: DeviceNode };
@@ -34,6 +35,7 @@ export default function TopologyCanvas() {
   const onConnect = useStore((s) => s.onConnect);
   const focusTerminal = useStore((s) => s.focusTerminal);
   const openTerminal = useStore((s) => s.openTerminal);
+  const inspectNode = useStore((s) => s.inspectNode);
   const showInfo = useStore((s) => s.showInfo);
 
   const [pending, setPending] = useState<Connection | null>(null);
@@ -75,12 +77,15 @@ export default function TopologyCanvas() {
         deleteKeyCode={['Delete', 'Backspace']}
         onNodeClick={(_, n) => {
           const t = n.data?.deviceType as DeviceType | undefined;
-          // Switches have no exec/CLI — explain instead of silently doing nothing.
+          // Switches have no exec/CLI — explain instead of opening an info panel.
           if (t && !HAS_TERMINAL[t]) {
             showInfo('Unmanaged switch — no CLI available');
+            inspectNode(null);
             return;
           }
-          // Single click = focus terminal; double-click opens it if closed.
+          // Single click: surface the interface info panel + focus the terminal
+          // if it's already open. Double-click opens the terminal if closed.
+          inspectNode(n.id);
           focusTerminal(n.id);
         }}
         onNodeDoubleClick={(_, n) => {
@@ -91,6 +96,7 @@ export default function TopologyCanvas() {
           }
           openTerminal(n.id);
         }}
+        onPaneClick={() => inspectNode(null)}
         fitView
       >
         <Background gap={18} size={1} color="#e2e8f0" />
@@ -106,6 +112,7 @@ export default function TopologyCanvas() {
         />
       </ReactFlow>
 
+      <NodeInfoPanel />
       <InfoToast />
 
       {pending && (

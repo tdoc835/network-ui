@@ -21,10 +21,14 @@ export interface LinkMeta {
   subnet: string;
   sourceIp?: string;
   targetIp?: string;
-  // Interface name assigned to each end. Computed in the store from
-  // edge order, matching the backend's per-node ethN numbering.
+  // Per-end interface name. sourceIf/targetIf are the expected ethN —
+  // computed from edge order, matching what's in lab.yml. After deploy,
+  // actualSourceIf/actualTargetIf are populated from `ip link show`
+  // inside each container; some images rename links (e.g. eth1 → et).
   sourceIf?: string;
   targetIf?: string;
+  actualSourceIf?: string;
+  actualTargetIf?: string;
 }
 
 // Persisted topology — what we POST to /api/labs/{name} and /api/deploy.
@@ -43,6 +47,10 @@ export interface Topology {
     subnet: string;
     sourceIp?: string;
     targetIp?: string;
+    sourceIf?: string;
+    targetIf?: string;
+    actualSourceIf?: string;
+    actualTargetIf?: string;
   }>;
 }
 
