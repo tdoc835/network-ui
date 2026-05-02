@@ -137,20 +137,32 @@ export default function Toolbar() {
     setPrompt({
       title: 'Save lab as',
       placeholder: 'Lab name',
+      validate: (v) => {
+        // Same charset the backend enforces — names also become part of
+        // container names (clab-<lab>-<node>) so no spaces or punctuation.
+        if (!/^[A-Za-z0-9_-]+$/.test(v)) {
+          return 'Use only letters, digits, hyphen, underscore.';
+        }
+        return null;
+      },
       onSubmit: async (name) => {
         // Containers run under the CURRENT lab name. Capture configs from
         // those before we rename the lab in our store.
         const runningLabName = useStore.getState().labName;
         const t = toTopology();
         t.name = name;
-        const res = await api.saveLab(name, t, runningLabName);
-        setLabName(name);
-        setPrompt(null);
-        const captured = res.configsCaptured?.length ?? 0;
-        if (captured > 0) {
-          showInfo(`Saved "${name}" (${captured} config${captured === 1 ? '' : 's'} captured)`);
-        } else {
-          showInfo(`Saved "${name}"`);
+        try {
+          const res = await api.saveLab(name, t, runningLabName);
+          setLabName(name);
+          setPrompt(null);
+          const captured = res.configsCaptured?.length ?? 0;
+          if (captured > 0) {
+            showInfo(`Saved "${name}" (${captured} config${captured === 1 ? '' : 's'} captured)`);
+          } else {
+            showInfo(`Saved "${name}"`);
+          }
+        } catch (e) {
+          alert(`Save failed: ${(e as Error).message}`);
         }
       },
     });
