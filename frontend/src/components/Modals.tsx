@@ -51,16 +51,27 @@ export function PromptModal({
   title,
   placeholder,
   defaultValue,
+  validate,
   onSubmit,
   onClose,
 }: {
   title: string;
   placeholder?: string;
   defaultValue?: string;
+  // Return null if the value is acceptable, or an error string to display.
+  validate?: (value: string) => string | null;
   onSubmit: (value: string) => void;
   onClose: () => void;
 }) {
   const [value, setValue] = useState(defaultValue ?? '');
+  const trimmed = value.trim();
+  const error = trimmed && validate ? validate(trimmed) : null;
+  const canSubmit = trimmed.length > 0 && !error;
+
+  const submit = () => {
+    if (canSubmit) onSubmit(trimmed);
+  };
+
   return (
     <Modal onClose={onClose}>
       <h3>{title}</h3>
@@ -70,25 +81,26 @@ export function PromptModal({
         placeholder={placeholder}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && value.trim()) onSubmit(value.trim());
+          if (e.key === 'Enter') submit();
         }}
         style={{
           width: '100%',
           padding: '8px 10px',
-          border: '1px solid #e2e8f0',
+          border: `1px solid ${error ? '#fecaca' : '#e2e8f0'}`,
           borderRadius: 6,
           fontSize: 13,
           fontFamily: 'inherit',
-          marginBottom: 12,
+          marginBottom: error ? 4 : 12,
         }}
       />
+      {error && (
+        <div style={{ color: '#b91c1c', fontSize: 12, marginBottom: 12 }}>
+          {error}
+        </div>
+      )}
       <div className="actions">
         <button className="btn" onClick={onClose}>Cancel</button>
-        <button
-          className="btn primary"
-          disabled={!value.trim()}
-          onClick={() => onSubmit(value.trim())}
-        >
+        <button className="btn primary" disabled={!canSubmit} onClick={submit}>
           OK
         </button>
       </div>

@@ -56,6 +56,9 @@ export default function TopologyCanvas() {
         // wherever the user actually drops it instead of snapping to the
         // nearest target-typed handle.
         connectionMode={ConnectionMode.Loose}
+        // Both keys remove the current selection (nodes + edges). React Flow
+        // also auto-removes edges connected to a deleted node.
+        deleteKeyCode={['Delete', 'Backspace']}
         onNodeClick={(_, n) => {
           // Single click = focus terminal; double-click opens it if closed.
           focusTerminal(n.id);

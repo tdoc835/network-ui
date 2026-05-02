@@ -13,25 +13,60 @@ export default function Toolbar() {
   const openTerminal = useStore((s) => s.openTerminal);
   const resetStatuses = useStore((s) => s.resetStatuses);
 
+  const edges = useStore((s) => s.edges);
+  const onNodesChange = useStore((s) => s.onNodesChange);
+  const onEdgesChange = useStore((s) => s.onEdgesChange);
+
   const [busy, setBusy] = useState(false);
   const [labsList, setLabsList] = useState<string[] | null>(null);
   const [prompt, setPrompt] = useState<{
     title: string;
     placeholder?: string;
+    validate?: (v: string) => string | null;
     onSubmit: (v: string) => void;
   } | null>(null);
 
   const askName = (kind: 'router' | 'host') => {
     const existing = nodes.filter((n) => n.data.deviceType === kind).length;
     const suggested = kind === 'router' ? `r${existing + 1}` : `host${existing + 1}`;
+    const takenNames = new Set(nodes.map((n) => n.data.name));
     setPrompt({
       title: `Add ${kind}`,
       placeholder: `Name (e.g. ${suggested})`,
+      validate: (v) => {
+        // Container names enforce the same charset on the backend, so
+        // catch it here for a friendlier error.
+        if (!/^[A-Za-z0-9_-]+$/.test(v)) {
+          return 'Use only letters, digits, hyphen, underscore.';
+        }
+        if (takenNames.has(v)) {
+          return `A device named "${v}" already exists.`;
+        }
+        return null;
+      },
       onSubmit: (name) => {
         addDevice(kind, name);
         setPrompt(null);
       },
     });
+  };
+
+  // Counts of currently-selected nodes/edges, for the Delete button label.
+  const selectedNodes = nodes.filter((n) => n.selected).length;
+  const selectedEdges = edges.filter((e) => e.selected).length;
+  const selectedCount = selectedNodes + selectedEdges;
+
+  const deleteSelected = () => {
+    if (selectedNodes > 0) {
+      onNodesChange(
+        nodes.filter((n) => n.selected).map((n) => ({ id: n.id, type: 'remove' })),
+      );
+    }
+    if (selectedEdges > 0) {
+      onEdgesChange(
+        edges.filter((e) => e.selected).map((e) => ({ id: e.id, type: 'remove' })),
+      );
+    }
   };
 
   const onDeploy = async () => {
@@ -102,6 +137,14 @@ export default function Toolbar() {
         <button className="btn" onClick={() => askName('host')} disabled={busy}>
           + Host
         </button>
+        <button
+          className="btn danger"
+          onClick={deleteSelected}
+          disabled={busy || selectedCount === 0}
+          title="Delete selected nodes and links (also: Delete or Backspace)"
+        >
+          Delete{selectedCount > 0 ? ` (${selectedCount})` : ''}
+        </button>
         <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
         <button className="btn primary" onClick={onDeploy} disabled={busy}>
           Deploy
@@ -118,6 +161,7 @@ export default function Toolbar() {
         <PromptModal
           title={prompt.title}
           placeholder={prompt.placeholder}
+          validate={prompt.validate}
           onSubmit={prompt.onSubmit}
           onClose={() => setPrompt(null)}
         />
