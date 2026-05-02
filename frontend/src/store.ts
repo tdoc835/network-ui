@@ -52,6 +52,30 @@ interface State {
 let _idCounter = 1;
 const nextId = () => `n${_idCounter++}`;
 
+// Walk edges in array order and assign ethN per node — same numbering the
+// backend's lab.yml generator uses, so the labels on the canvas match the
+// real interface names inside each container.
+function assignInterfaces(edges: FlowEdge[]): FlowEdge[] {
+  const ethCount: Record<string, number> = {};
+  const nextEth = (nodeId: string) => {
+    ethCount[nodeId] = (ethCount[nodeId] ?? 0) + 1;
+    return `eth${ethCount[nodeId]}`;
+  };
+  return edges.map((e) => {
+    const sourceIf = nextEth(e.source);
+    const targetIf = nextEth(e.target);
+    const subnet = e.data?.subnet ?? '';
+    const label = subnet
+      ? `${sourceIf} ─ ${subnet} ─ ${targetIf}`
+      : `${sourceIf} ─ ${targetIf}`;
+    return {
+      ...e,
+      label,
+      data: { ...(e.data ?? { subnet: '' }), sourceIf, targetIf },
+    };
+  });
+}
+
 export const useStore = create<State>((set, get) => ({
   labName: 'mylab',
   nodes: [],
@@ -64,27 +88,34 @@ export const useStore = create<State>((set, get) => ({
 
   setLabName: (n) => set({ labName: n }),
 
-  onNodesChange: (changes) =>
-    set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
+  onNodesChange: (changes) => {
+    set((s) => {
+      const nodes = applyNodeChanges(changes, s.nodes);
+      // If a node was removed, drop edges that reference it. React Flow
+      // doesn't auto-cascade, and orphaned edges would skew our ethN
+      // numbering for the remaining links.
+      const ids = new Set(nodes.map((n) => n.id));
+      const edges = s.edges.filter((e) => ids.has(e.source) && ids.has(e.target));
+      return { nodes, edges: assignInterfaces(edges) };
+    });
+  },
 
   onEdgesChange: (changes) =>
-    set((s) => ({ edges: applyEdgeChanges(changes, s.edges) })),
+    set((s) => ({ edges: assignInterfaces(applyEdgeChanges(changes, s.edges)) })),
 
   // Called by React Flow when the user finishes dragging an edge.
   onConnect: (conn, subnet) =>
     set((s) => ({
-      edges: addEdge(
+      edges: assignInterfaces(addEdge(
         {
           ...conn,
           id: `e${Date.now()}`,
           data: { subnet },
-          // Show the subnet on the edge so the canvas reads as a real diagram.
-          label: subnet,
           labelStyle: { fill: '#475569', fontSize: 11, fontWeight: 500 },
           labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
         } as FlowEdge,
         s.edges,
-      ),
+      )),
     })),
 
   addDevice: (type, name) => {
@@ -142,15 +173,19 @@ export const useStore = create<State>((set, get) => ({
       position: n.position,
       data: { name: n.name, deviceType: n.type, status: 'idle' },
     }));
-    const edges: FlowEdge[] = t.links.map((l) => ({
-      id: l.id,
-      source: l.source,
-      target: l.target,
-      data: { subnet: l.subnet, sourceIp: l.sourceIp, targetIp: l.targetIp },
-      label: l.subnet,
-      labelStyle: { fill: '#475569', fontSize: 11, fontWeight: 500 },
-      labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
-    }));
+    // Build edges then run assignInterfaces so the labels include the
+    // ethN names — the JSON file doesn't store them since they're
+    // derived from order.
+    const edges: FlowEdge[] = assignInterfaces(
+      t.links.map((l) => ({
+        id: l.id,
+        source: l.source,
+        target: l.target,
+        data: { subnet: l.subnet, sourceIp: l.sourceIp, targetIp: l.targetIp },
+        labelStyle: { fill: '#475569', fontSize: 11, fontWeight: 500 },
+        labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
+      })),
+    );
     // Make sure new nodes don't collide with loaded ones.
     const maxN = nodes.reduce((m, n) => {
       const num = parseInt(n.id.replace(/^n/, ''), 10);

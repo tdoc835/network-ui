@@ -21,6 +21,10 @@ export interface LinkMeta {
   subnet: string;
   sourceIp?: string;
   targetIp?: string;
+  // Interface name assigned to each end. Computed in the store from
+  // edge order, matching the backend's per-node ethN numbering.
+  sourceIf?: string;
+  targetIf?: string;
 }
 
 // Persisted topology — what we POST to /api/labs/{name} and /api/deploy.
