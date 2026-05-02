@@ -141,6 +141,7 @@ body {
 .canvas-wrap {
   flex: 1;
   min-height: 0;
+  position: relative; /* anchor for the info toast */
   background:
     radial-gradient(circle, #e2e8f0 1px, transparent 1px) 0 0 / 18px 18px,
     #f8fafc;
@@ -161,6 +162,7 @@ body {
 
 .device-node.router { border-color: #c7d2fe; background: #eef2ff; }
 .device-node.host   { border-color: #bae6fd; background: #f0f9ff; }
+.device-node.switch { border-color: #bbf7d0; background: #f0fdf4; }
 .device-node.focused { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25); }
 
 .device-node .icon {
@@ -174,6 +176,7 @@ body {
 }
 .device-node.router .icon { color: #4338ca; }
 .device-node.host   .icon { color: #0369a1; }
+.device-node.switch .icon { color: #047857; }
 
 .device-node .label {
   font-weight: 600;
@@ -281,6 +284,27 @@ body {
 }
 [data-panel-group-direction="vertical"] > [data-panel-resize-handle-enabled] {
   height: 4px;
+}
+
+/* ── Info toast ──────────────────────────────────────────────── */
+.info-toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #f1f5f9;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  z-index: 50;
+  pointer-events: none;
+  animation: toast-in 120ms ease-out;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
 /* ── Modal ───────────────────────────────────────────────────── */

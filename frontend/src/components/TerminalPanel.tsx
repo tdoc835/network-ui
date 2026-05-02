@@ -6,12 +6,15 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import { useStore } from '../store';
+import type { DeviceType } from '../types';
 
 interface Props {
   nodeId: string;
   containerName: string;
   deviceName: string;
-  deviceType: 'router' | 'host';
+  // Switches are filtered out in TerminalGrid so we never see one here,
+  // but keep the wider DeviceType to match upstream call sites.
+  deviceType: DeviceType;
 }
 
 type ConnState = 'connecting' | 'connected' | 'closed' | 'error';

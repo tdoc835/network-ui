@@ -1,6 +1,13 @@
 // Shared types between the canvas, the store, and the API client.
 
-export type DeviceType = 'router' | 'host';
+export type DeviceType = 'router' | 'host' | 'switch';
+
+// Switches use containerlab kind: bridge — pure L2, no exec, no terminal.
+export const HAS_TERMINAL: Record<DeviceType, boolean> = {
+  router: true,
+  host: true,
+  switch: false,
+};
 
 export type NodeStatus = 'idle' | 'running' | 'error';
 

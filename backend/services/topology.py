@@ -7,7 +7,8 @@ Topology JSON shape (from the React Flow canvas):
       "name": "mylab",
       "nodes": [
         {"id": "n1", "name": "r1",    "type": "router", "position": {"x":0,"y":0}},
-        {"id": "n2", "name": "host1", "type": "host",   "position": {"x":0,"y":0}}
+        {"id": "n2", "name": "host1", "type": "host",   "position": {"x":0,"y":0}},
+        {"id": "n3", "name": "sw1",   "type": "switch", "position": {"x":0,"y":0}}
       ],
       "links": [
         {"id": "e1", "source": "n1", "target": "n2", "subnet": "10.0.1.0/24"}
@@ -45,8 +46,16 @@ def generate_lab_yml(topology: dict[str, Any]) -> dict[str, Any]:
     """Build the containerlab dict (caller dumps to YAML)."""
     nodes_yaml: dict[str, Any] = {}
     for node in topology["nodes"]:
-        image = ROUTER_IMAGE if node["type"] == "router" else HOST_IMAGE
-        nodes_yaml[node["name"]] = {"kind": "linux", "image": image}
+        kind = node["type"]
+        if kind == "router":
+            nodes_yaml[node["name"]] = {"kind": "linux", "image": ROUTER_IMAGE}
+        elif kind == "host":
+            nodes_yaml[node["name"]] = {"kind": "linux", "image": HOST_IMAGE}
+        elif kind == "switch":
+            # `kind: bridge` is a pure L2 Linux bridge — no image, no exec.
+            nodes_yaml[node["name"]] = {"kind": "bridge"}
+        else:
+            raise ValueError(f"unknown node type: {kind!r}")
 
     # Each interface on a node gets a fresh ethN, counted up per node.
     eth_count: dict[str, int] = {n["name"]: 0 for n in topology["nodes"]}

@@ -3,6 +3,7 @@
 import { Fragment } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { containerNameFor, useStore } from '../store';
+import { HAS_TERMINAL } from '../types';
 import TerminalPanel from './TerminalPanel';
 
 export default function TerminalGrid() {
@@ -12,7 +13,10 @@ export default function TerminalGrid() {
 
   const open = openTerminals
     .map((id) => nodes.find((n) => n.id === id))
-    .filter((n): n is NonNullable<typeof n> => Boolean(n));
+    // Drop missing ids (deleted nodes) and any device type without an exec.
+    .filter(
+      (n): n is NonNullable<typeof n> => !!n && HAS_TERMINAL[n.data.deviceType],
+    );
 
   if (open.length === 0) {
     return (

@@ -101,6 +101,13 @@ async def terminal(ws: WebSocket, container_name: str) -> None:
             pass
         finally:
             stop.set()
+            # Wake up pty_to_ws — it's blocked in os.read inside a thread.
+            # Killing the docker exec process EOFs the slave PTY, which
+            # makes os.read on the master return b'' and unblocks the read.
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
 
     try:
         await asyncio.gather(pty_to_ws(), ws_to_pty())
@@ -110,6 +117,8 @@ async def terminal(ws: WebSocket, container_name: str) -> None:
         except OSError:
             pass
         try:
+            # Belt-and-braces: kill again in case the WS half didn't run
+            # (e.g. ws_to_pty died before its finally for some reason).
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
             pass

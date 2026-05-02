@@ -4,9 +4,15 @@ import { Handle, Position, type NodeProps } from 'reactflow';
 import type { DeviceNodeData } from '../types';
 import { useStore } from '../store';
 
+const ICON: Record<DeviceNodeData['deviceType'], string> = {
+  router: '◆',
+  host: '■',
+  switch: '⇆', // L2 forwarding glyph; matches the "no CLI" vibe of an unmanaged switch
+};
+
 export default function DeviceNode({ id, data }: NodeProps<DeviceNodeData>) {
   const focused = useStore((s) => s.focusedTerminal === id);
-  const icon = data.deviceType === 'router' ? '◆' : '■';
+  const icon = ICON[data.deviceType];
   return (
     <div className={`device-node ${data.deviceType} ${focused ? 'focused' : ''}`}>
       {/* Connectable on all four sides. Each handle has a unique id so

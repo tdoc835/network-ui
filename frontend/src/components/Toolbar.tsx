@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../store';
+import { HAS_TERMINAL, type DeviceType } from '../types';
 import { LoadLabModal, PromptModal } from './Modals';
 
 export default function Toolbar() {
@@ -11,6 +12,8 @@ export default function Toolbar() {
   const setLabName = useStore((s) => s.setLabName);
   const nodes = useStore((s) => s.nodes);
   const openTerminal = useStore((s) => s.openTerminal);
+  const closeAllTerminals = useStore((s) => s.closeAllTerminals);
+  const clearNodeStatuses = useStore((s) => s.clearNodeStatuses);
   const resetStatuses = useStore((s) => s.resetStatuses);
 
   const edges = useStore((s) => s.edges);
@@ -26,9 +29,10 @@ export default function Toolbar() {
     onSubmit: (v: string) => void;
   } | null>(null);
 
-  const askName = (kind: 'router' | 'host') => {
+  const askName = (kind: DeviceType) => {
     const existing = nodes.filter((n) => n.data.deviceType === kind).length;
-    const suggested = kind === 'router' ? `r${existing + 1}` : `host${existing + 1}`;
+    const prefix = kind === 'router' ? 'r' : kind === 'switch' ? 'sw' : 'host';
+    const suggested = `${prefix}${existing + 1}`;
     const takenNames = new Set(nodes.map((n) => n.data.name));
     setPrompt({
       title: `Add ${kind}`,
@@ -81,8 +85,11 @@ export default function Toolbar() {
       if (!res.ok) {
         alert('Deploy failed:\n\n' + (res.output || 'unknown error'));
       }
-      // Open a terminal per node so the user lands ready-to-go.
-      topology.nodes.forEach((n) => openTerminal(n.id));
+      // Open a terminal per node so the user lands ready-to-go — but skip
+      // switches (kind: bridge), which have no exec/CLI.
+      topology.nodes
+        .filter((n) => HAS_TERMINAL[n.type])
+        .forEach((n) => openTerminal(n.id));
       // Status dots are kept fresh by StatusSync's poll loop in App.
     } catch (e) {
       alert(`Deploy error: ${(e as Error).message}`);
@@ -96,7 +103,15 @@ export default function Toolbar() {
     setBusy(true);
     try {
       const res = await api.destroy();
-      if (!res.ok) alert('Destroy:\n\n' + (res.output || ''));
+      if (!res.ok) {
+        alert('Destroy:\n\n' + (res.output || ''));
+        return;
+      }
+      // Clean up the UI: every TerminalPanel unmounts (its useEffect closes
+      // the WebSocket → backend exits the gather() and kills the PTY child),
+      // status dots flip back to grey.
+      closeAllTerminals();
+      clearNodeStatuses();
       resetStatuses();
     } finally {
       setBusy(false);
@@ -136,6 +151,9 @@ export default function Toolbar() {
         </button>
         <button className="btn" onClick={() => askName('host')} disabled={busy}>
           + Host
+        </button>
+        <button className="btn" onClick={() => askName('switch')} disabled={busy}>
+          + Switch
         </button>
         <button
           className="btn danger"

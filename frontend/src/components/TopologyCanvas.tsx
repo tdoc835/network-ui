@@ -9,10 +9,17 @@ import ReactFlow, {
   type Connection,
 } from 'reactflow';
 import { useStore } from '../store';
+import { HAS_TERMINAL, type DeviceType } from '../types';
 import DeviceNode from './DeviceNode';
 import { PromptModal } from './Modals';
 
 const nodeTypes = { device: DeviceNode };
+
+function InfoToast() {
+  const msg = useStore((s) => s.infoMessage);
+  if (!msg) return null;
+  return <div className="info-toast">{msg}</div>;
+}
 
 export default function TopologyCanvas() {
   const nodes = useStore((s) => s.nodes);
@@ -22,6 +29,7 @@ export default function TopologyCanvas() {
   const onConnect = useStore((s) => s.onConnect);
   const focusTerminal = useStore((s) => s.focusTerminal);
   const openTerminal = useStore((s) => s.openTerminal);
+  const showInfo = useStore((s) => s.showInfo);
 
   const [pending, setPending] = useState<Connection | null>(null);
 
@@ -60,10 +68,23 @@ export default function TopologyCanvas() {
         // also auto-removes edges connected to a deleted node.
         deleteKeyCode={['Delete', 'Backspace']}
         onNodeClick={(_, n) => {
+          const t = n.data?.deviceType as DeviceType | undefined;
+          // Switches have no exec/CLI — explain instead of silently doing nothing.
+          if (t && !HAS_TERMINAL[t]) {
+            showInfo('Unmanaged switch — no CLI available');
+            return;
+          }
           // Single click = focus terminal; double-click opens it if closed.
           focusTerminal(n.id);
         }}
-        onNodeDoubleClick={(_, n) => openTerminal(n.id)}
+        onNodeDoubleClick={(_, n) => {
+          const t = n.data?.deviceType as DeviceType | undefined;
+          if (t && !HAS_TERMINAL[t]) {
+            showInfo('Unmanaged switch — no CLI available');
+            return;
+          }
+          openTerminal(n.id);
+        }}
         fitView
       >
         <Background gap={18} size={1} color="#e2e8f0" />
@@ -71,10 +92,15 @@ export default function TopologyCanvas() {
         <MiniMap
           pannable
           zoomable
-          nodeColor={(n) => (n.data?.deviceType === 'router' ? '#c7d2fe' : '#bae6fd')}
+          nodeColor={(n) => {
+            const t = n.data?.deviceType;
+            return t === 'router' ? '#c7d2fe' : t === 'switch' ? '#bbf7d0' : '#bae6fd';
+          }}
           maskColor="rgba(241,245,249,0.6)"
         />
       </ReactFlow>
+
+      <InfoToast />
 
       {pending && (
         <PromptModal

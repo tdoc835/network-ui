@@ -25,6 +25,7 @@ interface State {
   containerStatus: Record<string, NodeStatus>; // keyed by container name
   openTerminals: string[]; // node ids
   focusedTerminal: string | null;
+  infoMessage: string | null;
 
   setLabName: (n: string) => void;
   onNodesChange: (c: NodeChange[]) => void;
@@ -33,11 +34,15 @@ interface State {
   addDevice: (type: DeviceType, name: string) => void;
   setStatus: (containerName: string, s: NodeStatus) => void;
   resetStatuses: () => void;
+  // Reset the per-node `data.status` to 'idle' (grey dots).
+  clearNodeStatuses: () => void;
   openTerminal: (nodeId: string) => void;
   closeTerminal: (nodeId: string) => void;
+  closeAllTerminals: () => void;
   focusTerminal: (nodeId: string) => void;
   loadTopology: (t: Topology) => void;
   toTopology: () => Topology;
+  showInfo: (msg: string, ms?: number) => void;
 }
 
 let _idCounter = 1;
@@ -50,6 +55,7 @@ export const useStore = create<State>((set, get) => ({
   containerStatus: {},
   openTerminals: [],
   focusedTerminal: null,
+  infoMessage: null,
 
   setLabName: (n) => set({ labName: n }),
 
@@ -95,6 +101,14 @@ export const useStore = create<State>((set, get) => ({
 
   resetStatuses: () => set({ containerStatus: {} }),
 
+  // After a destroy, every node should flip back to a grey dot.
+  clearNodeStatuses: () =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.data.status === 'idle' ? n : { ...n, data: { ...n.data, status: 'idle' } },
+      ),
+    })),
+
   openTerminal: (id) =>
     set((s) =>
       s.openTerminals.includes(id)
@@ -107,6 +121,11 @@ export const useStore = create<State>((set, get) => ({
       openTerminals: s.openTerminals.filter((t) => t !== id),
       focusedTerminal: s.focusedTerminal === id ? null : s.focusedTerminal,
     })),
+
+  // Unmounting every TerminalPanel triggers its useEffect cleanup, which
+  // closes the WebSocket. The backend's WS handler then exits its gather()
+  // loop and the finally block kills the PTY child.
+  closeAllTerminals: () => set({ openTerminals: [], focusedTerminal: null }),
 
   focusTerminal: (id) => set({ focusedTerminal: id }),
 
@@ -162,6 +181,15 @@ export const useStore = create<State>((set, get) => ({
         targetIp: e.data?.targetIp,
       })),
     };
+  },
+
+  // Tiny toast: surfaces a message in the UI for `ms` ms then clears it.
+  showInfo: (msg, ms = 3000) => {
+    set({ infoMessage: msg });
+    window.setTimeout(() => {
+      // Only clear if it's still the same message (avoid clobbering a newer one).
+      if (useStore.getState().infoMessage === msg) set({ infoMessage: null });
+    }, ms);
   },
 }));
 
