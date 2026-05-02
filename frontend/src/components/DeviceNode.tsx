@@ -9,11 +9,14 @@ export default function DeviceNode({ id, data }: NodeProps<DeviceNodeData>) {
   const icon = data.deviceType === 'router' ? '◆' : '■';
   return (
     <div className={`device-node ${data.deviceType} ${focused ? 'focused' : ''}`}>
-      {/* Connectable on all four sides for cleaner topologies. */}
-      <Handle type="source" position={Position.Top} />
-      <Handle type="target" position={Position.Bottom} />
-      <Handle type="source" position={Position.Left} />
-      <Handle type="target" position={Position.Right} />
+      {/* Connectable on all four sides. Each handle has a unique id so
+          React Flow attaches the edge to the side the user actually
+          dragged from / dropped on. With ConnectionMode.Loose on the
+          ReactFlow root, any of these can connect to any other. */}
+      <Handle id="top"    type="source" position={Position.Top} />
+      <Handle id="bottom" type="source" position={Position.Bottom} />
+      <Handle id="left"   type="source" position={Position.Left} />
+      <Handle id="right"  type="source" position={Position.Right} />
       <div className="icon">{icon}</div>
       <div>
         <div className="label">{data.name}</div>

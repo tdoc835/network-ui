@@ -16,10 +16,16 @@ def _has_binary() -> bool:
 
 
 def _docker_clab_cmd(lab_dir: Path, *clab_args: str) -> list[str]:
-    """Build the `docker run … ghcr.io/srl-labs/clab …` invocation."""
+    """Build the `docker run … ghcr.io/srl-labs/clab …` invocation.
+
+    We pin --entrypoint=containerlab so it works regardless of whether the
+    image declares one (older tags don't, which surfaces as `exec: "deploy":
+    executable file not found in $PATH`).
+    """
     return [
         "docker", "run", "--rm", "--privileged",
         "--network", "host",
+        "--entrypoint", "containerlab",
         "-v", "/var/run/docker.sock:/var/run/docker.sock",
         "-v", "/var/run/netns:/var/run/netns",
         "-v", "/etc/hosts:/etc/hosts",

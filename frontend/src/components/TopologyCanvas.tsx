@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import ReactFlow, {
   Background,
+  ConnectionMode,
   Controls,
   MiniMap,
   type Connection,
@@ -51,6 +52,10 @@ export default function TopologyCanvas() {
         onConnect={handleConnect}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        // Loose: any handle can connect to any handle, so the edge follows
+        // wherever the user actually drops it instead of snapping to the
+        // nearest target-typed handle.
+        connectionMode={ConnectionMode.Loose}
         onNodeClick={(_, n) => {
           // Single click = focus terminal; double-click opens it if closed.
           focusTerminal(n.id);
