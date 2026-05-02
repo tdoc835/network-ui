@@ -19,8 +19,8 @@ from __future__ import annotations
 import ipaddress
 from typing import Any
 
-ROUTER_IMAGE = "frrouting/frr:latest"
-HOST_IMAGE = "alpine:latest"
+ROUTER_IMAGE = "netlab-router"
+HOST_IMAGE = "netlab-host"
 
 
 def assign_ips(topology: dict[str, Any]) -> dict[str, Any]:

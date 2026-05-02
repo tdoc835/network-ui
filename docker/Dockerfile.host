@@ -1,0 +1,13 @@
+FROM alpine:latest
+RUN apk add --no-cache \
+    tcpdump \
+    iputils \
+    traceroute \
+    curl \
+    wget \
+    netcat-openbsd \
+    iperf3 \
+    bind-tools \
+    nmap \
+    iproute2 \
+    bash
