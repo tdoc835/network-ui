@@ -15,6 +15,9 @@ export default function Toolbar() {
   const closeAllTerminals = useStore((s) => s.closeAllTerminals);
   const clearNodeStatuses = useStore((s) => s.clearNodeStatuses);
   const resetStatuses = useStore((s) => s.resetStatuses);
+  const restoreOnDeploy = useStore((s) => s.restoreOnDeploy);
+  const setRestoreOnDeploy = useStore((s) => s.setRestoreOnDeploy);
+  const showInfo = useStore((s) => s.showInfo);
 
   const edges = useStore((s) => s.edges);
   const onNodesChange = useStore((s) => s.onNodesChange);
@@ -81,7 +84,7 @@ export default function Toolbar() {
     setBusy(true);
     try {
       const topology = toTopology();
-      const res = await api.deploy(topology);
+      const res = await api.deploy(topology, restoreOnDeploy);
       if (!res.ok) {
         alert('Deploy failed:\n\n' + (res.output || 'unknown error'));
       }
@@ -91,6 +94,18 @@ export default function Toolbar() {
         .filter((n) => HAS_TERMINAL[n.type])
         .forEach((n) => openTerminal(n.id));
       // Status dots are kept fresh by StatusSync's poll loop in App.
+
+      // Restore is a one-shot action — clear the flag once we've used it
+      // so a follow-up Deploy after the user tweaks something doesn't
+      // surprise them by re-overwriting the live config.
+      if (restoreOnDeploy) {
+        const okCount = res.configsApplied?.filter((a) => a.ok).length ?? 0;
+        const total = res.configsApplied?.length ?? 0;
+        if (total > 0) {
+          showInfo(`Restored config on ${okCount}/${total} device(s)`);
+        }
+        setRestoreOnDeploy(false);
+      }
     } catch (e) {
       alert(`Deploy error: ${(e as Error).message}`);
     } finally {
@@ -123,11 +138,20 @@ export default function Toolbar() {
       title: 'Save lab as',
       placeholder: 'Lab name',
       onSubmit: async (name) => {
-        setLabName(name);
+        // Containers run under the CURRENT lab name. Capture configs from
+        // those before we rename the lab in our store.
+        const runningLabName = useStore.getState().labName;
         const t = toTopology();
         t.name = name;
-        await api.saveLab(name, t);
+        const res = await api.saveLab(name, t, runningLabName);
+        setLabName(name);
         setPrompt(null);
+        const captured = res.configsCaptured?.length ?? 0;
+        if (captured > 0) {
+          showInfo(`Saved "${name}" (${captured} config${captured === 1 ? '' : 's'} captured)`);
+        } else {
+          showInfo(`Saved "${name}"`);
+        }
       },
     });
   };
@@ -137,10 +161,15 @@ export default function Toolbar() {
     setLabsList(list);
   };
 
-  const pickLab = async (name: string) => {
+  const pickLab = async (name: string, restoreConfig: boolean) => {
     const t = await api.loadLab(name);
-    loadTopology(t);
+    // Only honour the checkbox when there are saved configs to restore.
+    const willRestore = restoreConfig && Boolean(t.hasSavedConfigs);
+    loadTopology(t, { restoreOnDeploy: willRestore });
     setLabsList(null);
+    if (restoreConfig && !t.hasSavedConfigs) {
+      showInfo(`Loaded "${name}" — no saved configs to restore`);
+    }
   };
 
   return (
@@ -164,8 +193,17 @@ export default function Toolbar() {
           Delete{selectedCount > 0 ? ` (${selectedCount})` : ''}
         </button>
         <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
-        <button className="btn primary" onClick={onDeploy} disabled={busy}>
-          Deploy
+        <button
+          className="btn primary"
+          onClick={onDeploy}
+          disabled={busy}
+          title={
+            restoreOnDeploy
+              ? 'Deploy and restore saved per-device configs'
+              : 'Deploy this topology with containerlab'
+          }
+        >
+          Deploy{restoreOnDeploy ? ' + restore' : ''}
         </button>
         <button className="btn danger" onClick={onDestroy} disabled={busy}>
           Destroy

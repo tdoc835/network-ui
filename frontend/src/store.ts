@@ -26,6 +26,9 @@ interface State {
   openTerminals: string[]; // node ids
   focusedTerminal: string | null;
   infoMessage: string | null;
+  // When the user loads a lab with "Restore saved config?" ticked, we
+  // remember it so the next Deploy applies the saved configs.
+  restoreOnDeploy: boolean;
 
   setLabName: (n: string) => void;
   onNodesChange: (c: NodeChange[]) => void;
@@ -40,9 +43,10 @@ interface State {
   closeTerminal: (nodeId: string) => void;
   closeAllTerminals: () => void;
   focusTerminal: (nodeId: string) => void;
-  loadTopology: (t: Topology) => void;
+  loadTopology: (t: Topology, opts?: { restoreOnDeploy?: boolean }) => void;
   toTopology: () => Topology;
   showInfo: (msg: string, ms?: number) => void;
+  setRestoreOnDeploy: (v: boolean) => void;
 }
 
 let _idCounter = 1;
@@ -56,6 +60,7 @@ export const useStore = create<State>((set, get) => ({
   openTerminals: [],
   focusedTerminal: null,
   infoMessage: null,
+  restoreOnDeploy: false,
 
   setLabName: (n) => set({ labName: n }),
 
@@ -129,7 +134,7 @@ export const useStore = create<State>((set, get) => ({
 
   focusTerminal: (id) => set({ focusedTerminal: id }),
 
-  loadTopology: (t) => {
+  loadTopology: (t, opts) => {
     // Rehydrate the React Flow graph from a saved Topology.
     const nodes: FlowNode[] = t.nodes.map((n) => ({
       id: n.id,
@@ -159,6 +164,7 @@ export const useStore = create<State>((set, get) => ({
       containerStatus: {},
       openTerminals: [],
       focusedTerminal: null,
+      restoreOnDeploy: opts?.restoreOnDeploy ?? false,
     });
   },
 
@@ -182,6 +188,8 @@ export const useStore = create<State>((set, get) => ({
       })),
     };
   },
+
+  setRestoreOnDeploy: (v) => set({ restoreOnDeploy: v }),
 
   // Tiny toast: surfaces a message in the UI for `ms` ms then clears it.
   showInfo: (msg, ms = 3000) => {
