@@ -1,4 +1,6 @@
 FROM alpine:latest
+
+# Userland networking + diagnostic toolbox.
 RUN apk add --no-cache \
     tcpdump \
     iputils \
@@ -10,4 +12,21 @@ RUN apk add --no-cache \
     bind-tools \
     nmap \
     iproute2 \
-    bash
+    bash \
+    strongswan \
+    iptables \
+    ip6tables \
+    sngrep \
+    python3 \
+    py3-pip \
+    openssh
+
+# Network-automation Python libraries.
+# cryptography (a paramiko transitive dep) compiles native code on Alpine,
+# so we pull the toolchain into a virtual package and drop it again after
+# pip install — keeps the runtime image lean.
+RUN apk add --no-cache --virtual .build-deps \
+        gcc musl-dev libffi-dev openssl-dev python3-dev cargo rust make \
+ && pip install --no-cache-dir --break-system-packages \
+        netmiko napalm paramiko \
+ && apk del .build-deps

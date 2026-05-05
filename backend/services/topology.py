@@ -48,9 +48,21 @@ def generate_lab_yml(topology: dict[str, Any]) -> dict[str, Any]:
     for node in topology["nodes"]:
         kind = node["type"]
         if kind == "router":
-            nodes_yaml[node["name"]] = {"kind": "linux", "image": ROUTER_IMAGE}
+            nodes_yaml[node["name"]] = {
+                "kind": "linux",
+                "image": ROUTER_IMAGE,
+            }
         elif kind == "host":
-            nodes_yaml[node["name"]] = {"kind": "linux", "image": HOST_IMAGE}
+            # Hosts run strongswan, iptables, etc. — all of which depend on
+            # netfilter / xfrm / ip_vti / esp kernel modules. We bind-mount
+            # /lib/modules so the container can load them on demand and run
+            # privileged so it has the capabilities to do so.
+            nodes_yaml[node["name"]] = {
+                "kind": "linux",
+                "image": HOST_IMAGE,
+                "privileged": True,
+                "binds": ["/lib/modules:/lib/modules"],
+            }
         elif kind == "switch":
             # `kind: bridge` is a pure L2 Linux bridge — no image, no exec.
             nodes_yaml[node["name"]] = {"kind": "bridge"}

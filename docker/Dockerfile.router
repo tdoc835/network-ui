@@ -1,4 +1,6 @@
 FROM frrouting/frr:latest
+
+# Userland diagnostic toolbox (FRR base image is intentionally minimal).
 RUN apk add --no-cache \
     tcpdump \
     traceroute \
@@ -7,3 +9,13 @@ RUN apk add --no-cache \
     nmap \
     bash \
     curl
+
+# Enable bgpd, ospfd and ldpd by default. The base image ships
+# /etc/frr/daemons with most daemons set to "no"; flip the three we
+# actually want on. Using sed substitution rather than echo so we don't
+# clobber any other settings the upstream file carries.
+RUN sed -i \
+    -e 's/^bgpd=.*/bgpd=yes/' \
+    -e 's/^ospfd=.*/ospfd=yes/' \
+    -e 's/^ldpd=.*/ldpd=yes/' \
+    /etc/frr/daemons
