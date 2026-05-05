@@ -54,13 +54,15 @@ def generate_lab_yml(topology: dict[str, Any]) -> dict[str, Any]:
             }
         elif kind == "host":
             # Hosts run strongswan, iptables, etc. — all of which depend on
-            # netfilter / xfrm / ip_vti / esp kernel modules. We bind-mount
-            # /lib/modules so the container can load them on demand and run
-            # privileged so it has the capabilities to do so.
+            # netfilter / xfrm / ip_vti / esp kernel modules. Containerlab
+            # has no top-level `privileged` field (it was removed in newer
+            # releases), so we grant equivalent capabilities via
+            # `cap-add: [ALL]` and bind-mount /lib/modules so the kernel
+            # modprobe lookup inside the container finds the host modules.
             nodes_yaml[node["name"]] = {
                 "kind": "linux",
                 "image": HOST_IMAGE,
-                "privileged": True,
+                "cap-add": ["ALL"],
                 "binds": ["/lib/modules:/lib/modules"],
             }
         elif kind == "switch":
