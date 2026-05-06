@@ -19,7 +19,9 @@ RUN apk add --no-cache \
     sngrep \
     python3 \
     py3-pip \
-    openssh
+    openssh \
+    openssh-client \
+    keepalived
 
 # Network-automation Python libraries.
 # cryptography (a paramiko transitive dep) compiles native code on Alpine,
@@ -28,5 +30,5 @@ RUN apk add --no-cache \
 RUN apk add --no-cache --virtual .build-deps \
         gcc musl-dev libffi-dev openssl-dev python3-dev cargo rust make \
  && pip install --no-cache-dir --break-system-packages \
-        netmiko napalm paramiko \
+        netmiko napalm paramiko nornir \
  && apk del .build-deps

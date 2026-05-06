@@ -10,12 +10,19 @@ RUN apk add --no-cache \
     bash \
     curl
 
-# Enable bgpd, ospfd and ldpd by default. The base image ships
-# /etc/frr/daemons with most daemons set to "no"; flip the three we
-# actually want on. Using sed substitution rather than echo so we don't
-# clobber any other settings the upstream file carries.
+# Enable bgpd, ospfd, ldpd (MPLS) and bfdd (fast failover) by default.
+# The base image ships /etc/frr/daemons with most daemons set to "no";
+# flip the four we actually want on. Using sed substitution rather than
+# echo so we don't clobber any other settings the upstream file carries.
 RUN sed -i \
     -e 's/^bgpd=.*/bgpd=yes/' \
     -e 's/^ospfd=.*/ospfd=yes/' \
     -e 's/^ldpd=.*/ldpd=yes/' \
+    -e 's/^bfdd=.*/bfdd=yes/' \
     /etc/frr/daemons
+
+# MPLS readiness — tell the kernel to allocate a label table on every
+# interface. Dropped into /etc/sysctl.d so anything that runs `sysctl
+# --system` at startup picks it up; containerlab's exec hooks can also
+# `sysctl -p /etc/sysctl.d/99-mpls.conf` if needed.
+RUN printf 'net.mpls.platform_labels=100000\n' > /etc/sysctl.d/99-mpls.conf

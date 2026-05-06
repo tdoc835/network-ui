@@ -42,8 +42,21 @@ def assign_ips(topology: dict[str, Any]) -> dict[str, Any]:
     return topology
 
 
-def generate_lab_yml(topology: dict[str, Any]) -> dict[str, Any]:
-    """Build the containerlab dict (caller dumps to YAML)."""
+def generate_lab_yml(
+    topology: dict[str, Any],
+    *,
+    bind_modules: bool = False,
+) -> dict[str, Any]:
+    """Build the containerlab dict (caller dumps to YAML).
+
+    `bind_modules` controls whether host nodes bind-mount /lib/modules into
+    the container. The caller (api/deploy.py) decides this by checking the
+    host filesystem — kept out of this module so topology generation stays
+    pure and easily testable. When the host has /lib/modules, the bind lets
+    modprobe inside host containers find kernel modules (netfilter, xfrm,
+    esp, etc.); on systems without it (OrbStack, minimal hosts) the bind
+    must be omitted or containerlab fails verification before deploying.
+    """
     nodes_yaml: dict[str, Any] = {}
     for node in topology["nodes"]:
         kind = node["type"]
@@ -53,18 +66,18 @@ def generate_lab_yml(topology: dict[str, Any]) -> dict[str, Any]:
                 "image": ROUTER_IMAGE,
             }
         elif kind == "host":
-            # Hosts run strongswan, iptables, etc. — all of which depend on
-            # netfilter / xfrm / ip_vti / esp kernel modules. Containerlab
-            # has no top-level `privileged` field (it was removed in newer
-            # releases), so we grant equivalent capabilities via
-            # `cap-add: [ALL]` and bind-mount /lib/modules so the kernel
-            # modprobe lookup inside the container finds the host modules.
-            nodes_yaml[node["name"]] = {
+            # privileged + /dev/net/tun cover GRE, IPSec xfrm, iptables/NAT,
+            # MPLS, and TUN/TAP-based tunnels (OpenVPN, WireGuard).
+            host_node: dict[str, Any] = {
                 "kind": "linux",
                 "image": HOST_IMAGE,
+                "privileged": True,
                 "cap-add": ["ALL"],
-                "binds": ["/lib/modules:/lib/modules"],
+                "devices": ["/dev/net/tun"],
             }
+            if bind_modules:
+                host_node["binds"] = ["/lib/modules:/lib/modules"]
+            nodes_yaml[node["name"]] = host_node
         elif kind == "switch":
             # `kind: bridge` is a pure L2 Linux bridge — no image, no exec.
             nodes_yaml[node["name"]] = {"kind": "bridge"}

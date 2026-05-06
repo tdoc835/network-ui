@@ -1,6 +1,7 @@
 """Deploy / destroy / status endpoints."""
 from __future__ import annotations
 import json
+import os
 import time
 import yaml
 from fastapi import APIRouter, Body
@@ -76,7 +77,12 @@ def deploy(topology: dict = Body(...)) -> dict:
     and (on success) detect each node's actual interface names.
     """
     topology = assign_ips(topology)
-    lab_yml = generate_lab_yml(topology)
+    # Only bind-mount /lib/modules into host containers when the directory
+    # actually exists on the docker host. On OrbStack and other minimal
+    # environments it doesn't, and an unconditional bind makes containerlab
+    # fail topology verification before any container starts.
+    bind_modules = os.path.isdir("/lib/modules")
+    lab_yml = generate_lab_yml(topology, bind_modules=bind_modules)
 
     (ACTIVE_LAB_DIR / "lab.yml").write_text(
         yaml.safe_dump(lab_yml, sort_keys=False, default_flow_style=False)
