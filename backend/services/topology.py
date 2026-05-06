@@ -66,12 +66,15 @@ def generate_lab_yml(
                 "image": ROUTER_IMAGE,
             }
         elif kind == "host":
-            # privileged + /dev/net/tun cover GRE, IPSec xfrm, iptables/NAT,
-            # MPLS, and TUN/TAP-based tunnels (OpenVPN, WireGuard).
+            # Containerlab dropped the top-level `privileged` field in
+            # recent releases (0.74 rejects it outright), so we get
+            # equivalent behaviour via `cap-add: [ALL]`. /dev/net/tun is
+            # exposed for TUN/TAP tunnels (OpenVPN, WireGuard); together
+            # with cap-add this covers GRE, IPSec xfrm, iptables/NAT, and
+            # MPLS for the training-plan phases.
             host_node: dict[str, Any] = {
                 "kind": "linux",
                 "image": HOST_IMAGE,
-                "privileged": True,
                 "cap-add": ["ALL"],
                 "devices": ["/dev/net/tun"],
             }
